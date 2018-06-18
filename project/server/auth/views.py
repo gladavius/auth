@@ -55,13 +55,11 @@ class LoginAPI(MethodView):
         post_data = request.get_json()
         try:
             # fetch the user data
-            user = User.query.filter_by(
-                email=post_data.get('email')
-            ).first()
+            user = madb.verifier_utilisateur(post_data.get('login'), post_data.get('mdp'))
             if user and bcrypt.check_password_hash(
-                user.password, post_data.get('password')
+                user.password, post_data.get('mdp')
             ):
-                auth_token = user.encode_auth_token(user.id)
+                auth_token = user.encode_auth_token(post_data.get('login')
                 if auth_token:
                     responseObject = {
                         'status': 'success',
@@ -84,7 +82,7 @@ class LoginAPI(MethodView):
             return make_response(jsonify(responseObject)), 500
 
 
-class UserAPI(MethodView):
+class RefreshAPI(MethodView):
     """
     User Resource
     """
@@ -129,7 +127,7 @@ class UserAPI(MethodView):
             return make_response(jsonify(responseObject)), 401
 
 
-class LogoutAPI(MethodView):
+class DeleteAPI(MethodView):
     """
     Logout Resource
     """
@@ -176,8 +174,8 @@ class LogoutAPI(MethodView):
 # define the API resources
 registration_view = RegisterAPI.as_view('register_api')
 login_view = LoginAPI.as_view('login_api')
-user_view = UserAPI.as_view('user_api')
-logout_view = LogoutAPI.as_view('logout_api')
+refresh_view = RefreshAPI.as_view('refresh_api')
+delete_view = DeleteAPI.as_view('delete_api')
 
 # add Rules for API Endpoints
 auth_blueprint.add_url_rule(
@@ -191,12 +189,12 @@ auth_blueprint.add_url_rule(
     methods=['POST']
 )
 auth_blueprint.add_url_rule(
-    '/auth/status',
-    view_func=user_view,
-    methods=['GET']
+    '/auth/refresh',
+    view_func=refresh_view,
+    methods=['POST']
 )
 auth_blueprint.add_url_rule(
-    '/auth/logout',
-    view_func=logout_view,
+    '/auth/delete',
+    view_func=delete_view,
     methods=['POST']
 )
