@@ -10,6 +10,7 @@ from project.server.db import Database
 
 auth_blueprint = Blueprint('auth', __name__)
 madb = Database()
+monuser = User()
 
 class RegisterAPI(MethodView):
     """
@@ -25,7 +26,7 @@ class RegisterAPI(MethodView):
             try:
                 madb.creer_utilisateur(post_data.get('login'), post_data.get('mdp'))
                 # generate the auth token
-                auth_token = user.encode_auth_token(post_data.get('login'))
+                auth_token = monuser.encode_auth_token(post_data.get('login'))
                 responseObject = {
                     'status': 'success',
                     'message': 'Successfully registered.',
@@ -56,10 +57,8 @@ class LoginAPI(MethodView):
         try:
             # fetch the user data
             user = madb.verifier_utilisateur(post_data.get('login'), post_data.get('mdp'))
-            if user and bcrypt.check_password_hash(
-                user.password, post_data.get('mdp')
-            ):
-                auth_token = user.encode_auth_token(post_data.get('login')
+            if user :
+                auth_token = monuser.encode_auth_token(post_data.get('login'))
                 if auth_token:
                     responseObject = {
                         'status': 'success',
@@ -129,47 +128,33 @@ class RefreshAPI(MethodView):
 
 class DeleteAPI(MethodView):
     """
-    Logout Resource
+    Delete Resource
     """
     def post(self):
-        # get auth token
-        auth_header = request.headers.get('Authorization')
-        if auth_header:
-            auth_token = auth_header.split(" ")[1]
-        else:
-            auth_token = ''
-        if auth_token:
-            resp = User.decode_auth_token(auth_token)
-            if not isinstance(resp, str):
-                # mark the token as blacklisted
-                blacklist_token = BlacklistToken(token=auth_token)
-                try:
-                    # insert the token
-                    db.session.add(blacklist_token)
-                    db.session.commit()
-                    responseObject = {
-                        'status': 'success',
-                        'message': 'Successfully logged out.'
-                    }
-                    return make_response(jsonify(responseObject)), 200
-                except Exception as e:
-                    responseObject = {
-                        'status': 'fail',
-                        'message': e
-                    }
-                    return make_response(jsonify(responseObject)), 200
-            else:
+        # get the post data
+        post_data = request.get_json()
+        # check if user already exists
+        user = madb.verifier_utilisateur(post_data.get('login'), post_data.get('mdp'))
+        if user:
+            try:
+                madb.supprimer_utilisateur(post_data.get('login'))
+                responseObject = {
+                    'status': 'success',
+                    'message': 'Successfully deleted.'
+                }
+                return make_response(jsonify(responseObject)), 201
+            except Exception as e:
                 responseObject = {
                     'status': 'fail',
-                    'message': resp
+                    'message': 'Some error occurred. Please try again.'
                 }
                 return make_response(jsonify(responseObject)), 401
         else:
             responseObject = {
                 'status': 'fail',
-                'message': 'Provide a valid auth token.'
+                'message': 'User does not exists.',
             }
-            return make_response(jsonify(responseObject)), 403
+            return make_response(jsonify(responseObject)), 202
 
 # define the API resources
 registration_view = RegisterAPI.as_view('register_api')
