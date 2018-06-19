@@ -21,24 +21,34 @@ class Database:
                 password=mdp,
             )
             user.save()
-            return True
         except Exception as e:
             return False
+        else:
+            return True
 
     def supprimer_utilisateur(self, nom):
-        Authentification.objects(login=nom).delete()
-        return True
+        try:
+            Authentification.objects(login=nom).delete()
+        except Exception as e:
+            return False
+        else:
+            return True
 
     def modifier_utilisateur(self, nom, mdp):
-        Authentification.objects(login=nom).update_one(set__password=mdp)
-        return True
+        try:
+            Authentification.objects(login=nom).update_one(set__password=mdp)
+        except Exception as e:
+            return False
+        else:
+            return True
 
     def verifier_utilisateur(self, nom, mdp):
         try:
-            import ipdb;
-            ipdb.set_trace()
-            myuser = Authentification.objects(login=nom)
-            return True
+            myuser = len(Authentification.objects(login=nom))
+            if (myuser != 0):
+                return True
+            else:
+                return False
         except Exception as e:
             return False
 
