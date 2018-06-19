@@ -44,7 +44,7 @@ class Database:
 
     def verifier_utilisateur(self, nom, mdp):
         try:
-            myuser = len(Authentification.objects(login=nom))
+            myuser = len(Authentification.objects(login=nom, password=mdp))
             if (myuser != 0):
                 return True
             else:
