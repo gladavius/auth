@@ -1,6 +1,3 @@
-# project/server/auth/views.py
-
-
 from flask import Blueprint, request, make_response, jsonify
 from flask.views import MethodView
 
@@ -24,9 +21,9 @@ class RegisterAPI(MethodView):
         user = madb.verifier_utilisateur(post_data.get('login'), post_data.get('mdp'))
         if not user:
             try:
-                madb.creer_utilisateur(post_data.get('login'), post_data.get('mdp'))
+                madb.creer_utilisateur(post_data.get('login'), post_data.get('mdp'), post_data.get('role'))
                 # generate the auth token
-                auth_token = monuser.encode_auth_token(post_data.get('login'))
+                auth_token = monuser.encode_auth_token(post_data.get('login'), post_data.get('role'))
                 responseObject = {
                     'status': 'success',
                     'message': 'Successfully registered.',
@@ -56,9 +53,15 @@ class LoginAPI(MethodView):
         post_data = request.get_json()
         try:
             # fetch the user data
-            user = madb.verifier_utilisateur(post_data.get('login'), post_data.get('mdp'))
-            if user :
-                auth_token = monuser.encode_auth_token(post_data.get('login'))
+            userrole = madb.verifier_utilisateur(post_data.get('login'), post_data.get('mdp'))
+            if not userrole:
+                responseObject = {
+                    'status': 'fail',
+                    'message': 'User does not exist.'
+                }
+                return make_response(jsonify(responseObject)), 404
+            else:
+                auth_token = monuser.encode_auth_token(post_data.get('login'), userrole)
                 if auth_token:
                     responseObject = {
                         'status': 'success',
@@ -66,12 +69,6 @@ class LoginAPI(MethodView):
                         'auth_token': auth_token.decode()
                     }
                     return make_response(jsonify(responseObject)), 200
-            else:
-                responseObject = {
-                    'status': 'fail',
-                    'message': 'User does not exist.'
-                }
-                return make_response(jsonify(responseObject)), 404
         except Exception as e:
             print(e)
             responseObject = {
@@ -81,49 +78,36 @@ class LoginAPI(MethodView):
             return make_response(jsonify(responseObject)), 500
 
 
-class RefreshAPI(MethodView):
+class ModifyAPI(MethodView):
     """
-    User Resource
+    User modification Resource
     """
-    def get(self):
-        # get the auth token
-        auth_header = request.headers.get('Authorization')
-        if auth_header:
+
+    def post(self):
+        # get the post data
+        post_data = request.get_json()
+        # check if user already exists
+        user = madb.verifier_utilisateur(post_data.get('login'), post_data.get('mdp'))
+        if user:
             try:
-                auth_token = auth_header.split(" ")[1]
-            except IndexError:
+                madb.modifier_utilisateur(post_data.get('login'), post_data.get('new_mdp'))
+                responseObject = {
+                    'status': 'success',
+                    'message': 'Successfully modified.'
+                }
+                return make_response(jsonify(responseObject)), 201
+            except Exception as e:
                 responseObject = {
                     'status': 'fail',
-                    'message': 'Bearer token malformed.'
+                    'message': 'Some error occurred. Please try again.'
                 }
                 return make_response(jsonify(responseObject)), 401
         else:
-            auth_token = ''
-        if auth_token:
-            resp = User.decode_auth_token(auth_token)
-            if not isinstance(resp, str):
-                user = User.query.filter_by(id=resp).first()
-                responseObject = {
-                    'status': 'success',
-                    'data': {
-                        'user_id': user.id,
-                        'email': user.email,
-                        'admin': user.admin,
-                        'registered_on': user.registered_on
-                    }
-                }
-                return make_response(jsonify(responseObject)), 200
             responseObject = {
                 'status': 'fail',
-                'message': resp
+                'message': 'User does not exists. Please use register api.',
             }
-            return make_response(jsonify(responseObject)), 401
-        else:
-            responseObject = {
-                'status': 'fail',
-                'message': 'Provide a valid auth token.'
-            }
-            return make_response(jsonify(responseObject)), 401
+            return make_response(jsonify(responseObject)), 2
 
 
 class DeleteAPI(MethodView):
@@ -159,7 +143,7 @@ class DeleteAPI(MethodView):
 # define the API resources
 registration_view = RegisterAPI.as_view('register_api')
 login_view = LoginAPI.as_view('login_api')
-refresh_view = RefreshAPI.as_view('refresh_api')
+modify_view = ModifyAPI.as_view('modify_api')
 delete_view = DeleteAPI.as_view('delete_api')
 
 # add Rules for API Endpoints
@@ -174,8 +158,8 @@ auth_blueprint.add_url_rule(
     methods=['POST']
 )
 auth_blueprint.add_url_rule(
-    '/auth/refresh',
-    view_func=refresh_view,
+    '/auth/modify',
+    view_func=modify_view,
     methods=['POST']
 )
 auth_blueprint.add_url_rule(

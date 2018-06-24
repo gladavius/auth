@@ -10,7 +10,7 @@ from project.server import app, db, bcrypt
 class User():
     """ User Model for storing user related details """
 
-    def encode_auth_token(self, user_id):
+    def encode_auth_token(self, user_id, droits):
         """
         Generates the Auth Token
         :return: string
@@ -19,6 +19,7 @@ class User():
             payload = {
                 'exp': datetime.datetime.utcnow() + datetime.timedelta(days=0, seconds=5),
                 'iat': datetime.datetime.utcnow(),
+                'role': droits,
                 'sub': user_id
             }
             return jwt.encode(

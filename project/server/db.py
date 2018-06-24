@@ -1,12 +1,18 @@
 from mongoengine import *
 import datetime
 import sys
+import configparser
+import bcrypt
 
-connect('mongoengine_test', host='localhost', port=27017)
+config = configparser.ConfigParser()
+config.read('/app/config/auth.ini')
+
+connect(config['MONGODB']['db_name'], host=config['MONGODB']['db_host'], port=int(config['MONGODB']['db_port']), username=config['MONGODB']['db_username'], password=config['MONGODB']['db_password'])
 
 class Authentification(Document):
     login = StringField(required=True, max_length=200)
     password = StringField(required=True)
+    role = StringField(required=True)
     published = DateTimeField(default=datetime.datetime.now)
 
 class Database:
@@ -14,11 +20,13 @@ class Database:
     def __init__(self):
          self.nom = "docker"
 
-    def creer_utilisateur(self, nom, mdp):
+    def creer_utilisateur(self, nom, mdp, droits):
         try:
+            hashed_password = bcrypt.hashpw(mdp.encode('utf8'), bcrypt.gensalt( 12 ))
             user = Authentification(
                 login=nom,
-                password=mdp,
+                password=hashed_password,
+                role=droits,
             )
             user.save()
         except Exception as e:
@@ -36,7 +44,8 @@ class Database:
 
     def modifier_utilisateur(self, nom, mdp):
         try:
-            Authentification.objects(login=nom).update_one(set__password=mdp)
+            hashed_password = bcrypt.hashpw(mdp.encode('utf8'), bcrypt.gensalt(12))
+            Authentification.objects(login=nom).update_one(set__password=hashed_password)
         except Exception as e:
             return False
         else:
@@ -44,9 +53,12 @@ class Database:
 
     def verifier_utilisateur(self, nom, mdp):
         try:
-            myuser = len(Authentification.objects(login=nom, password=mdp))
-            if (myuser != 0):
-                return True
+            hashed_password = Authentification.objects(login=nom).only('password').first()
+            user_role = Authentification.objects(login=nom).only('role').first()
+            verify_password = bcrypt.checkpw(mdp.encode('utf8'), hashed_password.password.encode('utf8'))
+            myuser = len(Authentification.objects(login=nom, password=hashed_password.password))
+            if (myuser != 0) and verify_password:
+                return user_role.role
             else:
                 return False
         except Exception as e:
