@@ -1,3 +1,5 @@
 sudo docker run -d --name amaris-auth -p 5000:5000 -e APP_SETTINGS="project.server.config.ProductionConfig" -e SECRET_KEY="change_me" -v /home/grosquick/auth.ini:/app/config/auth.ini amaris-auth:0.12
 curl -d '{"login":"sdqay","mdp":"tofdsto"}' -H "Content-Type: application/json" -X POST http://localhost:5000/auth/login
 curl -d '{"login":"sdqay","mdp":"tofdsto"}' -H "Content-Type: application/json" -X POST http://localhost:5000/auth/register
+
+yeah baby
