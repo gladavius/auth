@@ -1,3 +1,1 @@
-execute (
-  script: "echo yeah"
-)
+fxTask()
