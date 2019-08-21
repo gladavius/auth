@@ -3,3 +3,4 @@ curl -d '{"login":"sdqay","mdp":"tofdsto"}' -H "Content-Type: application/json" 
 curl -d '{"login":"sdqay","mdp":"tofdsto"}' -H "Content-Type: application/json" -X POST http://localhost:5000/auth/register
 
 yeah baby
+yeah yeah
